@@ -63,9 +63,9 @@ lda.fit(doc_term_matrix)
 
 # Manual Topic Labels
 topic_labels = {
-    0: 'Technology and human integration',
-    1: 'Energy and Environment',
-    2: 'Innovation and Economy'
+    0: 'Economy and Human Integration',
+    1: 'Innovation and Economy',
+    2: 'Energy and Environment'
     }
 
 # Display Topics
@@ -253,6 +253,7 @@ for topic_num, label in topic_labels.items():
             'Topic': label,
             'Sentiment': row['Sentiment'],
             'Type': 'Positive',
+            'Headline': row['Headline'],
             'Content': row['Cleaned_Content']
         })
 
@@ -262,6 +263,7 @@ for topic_num, label in topic_labels.items():
             'Topic': label,
             'Sentiment': row['Sentiment'],
             'Type': 'Negative',
+            'Headline': row['Headline'],
             'Content': row['Cleaned_Content']
         })
 

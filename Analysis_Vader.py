@@ -10,6 +10,9 @@ from sklearn.decomposition import LatentDirichletAllocation
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.sentiment import SentimentIntensityAnalyzer
+from collections import Counter
+
+
 
 # Load data
 df = pd.read_excel('DataForPy.xlsx', sheet_name='DataForPhy')
@@ -36,8 +39,9 @@ basic_stopwords = {
     'during', 'since', 'until', 'within', 'without', 'through', 'across',
     'around', 'along', 'against', 'among', 'beyond', 'despite', 'except',
     'inside', 'outside', 'toward', 'towards', 'upon',
-    'because', 'although', 'though', 'even', 'unless',
-    'whereas','new', 'would', 'year','bbc','mr','uk'
+    'because', 'although', 'though', 'even', 'unless','nh',
+    'whereas','new', 'would', 'year','bbc','mr','uk','u', 'week', 
+    'musk', 'china', 'trump', 'president', 'government', 'people', 'country', 'biden'
 }
 
 def clean_text(text):
@@ -54,22 +58,23 @@ df['Cleaned_Content'] = df['Content'].apply(clean_text)
 vectorizer = CountVectorizer(max_df=0.9, min_df=2)
 doc_term_matrix = vectorizer.fit_transform(df['Cleaned_Content'])
 
-lda = LatentDirichletAllocation(n_components=4, random_state=42)
+lda = LatentDirichletAllocation(n_components=3, random_state=42)
 lda.fit(doc_term_matrix)
 
 # Manual Topic Labels
 topic_labels = {
-    0: 'Power and Environment',
-    1: 'Social and Regulations',
-    2: 'Economy and Technology',
-    3: 'Technology and Innovation'
-}
+    0: 'Technology and human integration',
+    1: 'Energy and Environment',
+    2: 'Innovation and Economy'
+    }
 
 # Display Topics
 for index, topic in enumerate(lda.components_):
     print(f'Topic #{index+1}:')
     print([vectorizer.get_feature_names_out()[i] for i in topic.argsort()[-10:]])
     print(f'Label: {topic_labels[index]}')
+
+
 
 # Sentiment Analysis
 sia = SentimentIntensityAnalyzer() 
@@ -91,10 +96,13 @@ df['Sentiment_Label'] = np.select(conditions, choices, default='neutral')
 # Average Sentiment by Topic
 sentiment_by_topic_named = df.groupby('Topic_Label')['Sentiment'].mean()
 
+# Average Sentiment by Year
+sentiment_by_year = df.groupby('Year')['Sentiment'].mean().reset_index()
+
 
 # Visualizations
 # Top words per Topic
-fig, axes = plt.subplots(1, 4, figsize=(15, 7), sharex=True)
+fig, axes = plt.subplots(1, 3, figsize=(15, 7), sharex=True)
 for idx, topic in enumerate(lda.components_):
     top_features_indices = topic.argsort()[:-11:-1]
     top_features = [vectorizer.get_feature_names_out()[i] for i in top_features_indices]
@@ -124,6 +132,16 @@ sentiment_by_topic_named.plot(kind='bar', color=colors, title='Average Sentiment
 plt.xlabel('Topic')
 plt.ylabel('Average Sentiment')
 plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Sentiment by Year
+plt.figure(figsize=(10, 5))
+sns.lineplot(data=sentiment_by_year, x='Year', y='Sentiment', marker='o')
+plt.title('Average Sentiment by Year')
+plt.xlabel('Year')
+plt.ylabel('Average Sentiment')
+plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 
@@ -169,3 +187,84 @@ plt.ylabel('Count of Articles')
 plt.xticks(rotation=45, ha='right')
 plt.tight_layout()
 plt.show()
+
+## advanced visualization with pyLDAvis
+# Assign dominant topic per document
+df['Dominant_Topic'] = np.argmax(lda.transform(doc_term_matrix), axis=1)
+df['Topic_Label'] = df['Dominant_Topic'].map(topic_labels)
+
+# Display Topics
+for index, topic in enumerate(lda.components_):
+    print(f'Topic #{index+1}:')
+    print([vectorizer.get_feature_names_out()[i] for i in topic.argsort()[-10:]])
+    print(f'Label: {topic_labels[index]}')
+
+
+# Sentiment by Topic over Time
+plt.figure(figsize=(12, 6))
+sentiment_trend = df.groupby(['Year', 'Topic_Label'])['Sentiment'].mean().reset_index()
+sns.lineplot(data=sentiment_trend, x='Year', y='Sentiment', hue='Topic_Label', marker='o')
+plt.title('Sentiment by Topic over Time')
+plt.xlabel('Year')
+plt.ylabel('Average Sentiment')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Topics over Time
+topic_distribution = df.groupby(['Year', 'Topic_Label']).size().reset_index(name='Count')
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=topic_distribution, x='Year', y='Count', hue='Topic_Label', marker='o')
+plt.title('Topics over Time')
+plt.xlabel('Year')
+plt.ylabel('Count of Articles')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Top words per Topic and Sentiment + export to Excel
+top_words_rows = []
+
+for topic_num, label in topic_labels.items():
+    pos_docs = df[(df['Dominant_Topic'] == topic_num) & (df['Sentiment'] > 0.2)]['Cleaned_Content']
+    pos_words = ' '.join(pos_docs).split()
+    top_pos_words = Counter(pos_words).most_common(10)
+
+    for word, freq in top_pos_words:
+        top_words_rows.append({'Topic': label, 'Sentiment': 'Positive', 'Word': word, 'Frequency': freq})
+
+    neg_docs = df[(df['Dominant_Topic'] == topic_num) & (df['Sentiment'] < -0.2)]['Cleaned_Content']
+    neg_words = ' '.join(neg_docs).split()
+    top_neg_words = Counter(neg_words).most_common(10)
+
+    for word, freq in top_neg_words:
+        top_words_rows.append({'Topic': label, 'Sentiment': 'Negative', 'Word': word, 'Frequency': freq})
+
+# Convert to DataFrame and export to Excel
+top_words_df = pd.DataFrame(top_words_rows)
+top_words_df.to_excel('top_words_by_topic_and_sentiment.xlsx', index=False)
+
+# Top documents by Topic and Sentiment
+rows = []
+for topic_num, label in topic_labels.items():
+    top_pos = df[df['Dominant_Topic'] == topic_num].sort_values(by='Sentiment', ascending=False).head(3)
+    for i, row in top_pos.iterrows():
+        rows.append({
+            'Topic': label,
+            'Sentiment': row['Sentiment'],
+            'Type': 'Positive',
+            'Content': row['Cleaned_Content']
+        })
+
+    top_neg = df[df['Dominant_Topic'] == topic_num].sort_values(by='Sentiment').head(3)
+    for i, row in top_neg.iterrows():
+        rows.append({
+            'Topic': label,
+            'Sentiment': row['Sentiment'],
+            'Type': 'Negative',
+            'Content': row['Cleaned_Content']
+        })
+
+# Convert to DataFrame and export to Excel
+top_docs_df = pd.DataFrame(rows)
+top_docs_df.to_excel('top_documents_by_topic_and_sentiment.xlsx', index=False)

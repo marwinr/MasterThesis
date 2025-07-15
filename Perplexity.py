@@ -34,8 +34,9 @@ basic_stopwords = {
     'during', 'since', 'until', 'within', 'without', 'through', 'across',
     'around', 'along', 'against', 'among', 'beyond', 'despite', 'except',
     'inside', 'outside', 'toward', 'towards', 'upon',
-    'because', 'although', 'though', 'even', 'unless',
-    'whereas','new', 'would', 'year','bbc','mr','uk'
+    'because', 'although', 'though', 'even', 'unless','nh',
+    'whereas','new', 'would', 'year','bbc','mr','uk','u', 'week', 
+    'musk', 'china', 'trump', 'president', 'government', 'people', 'country', 'biden'
 }
 
 def clean_text(text):

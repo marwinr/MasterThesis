@@ -15,7 +15,7 @@ from collections import Counter
 
 
 # Load data
-df = pd.read_excel('DataForPy.xlsx', sheet_name='DataForPhy')
+df = pd.read_excel('Dataset_GenAi_Sustainability', sheet_name='DataForPhy')
 df = df[['Source', 'Author', 'Headline', 'Year', 'Content', 'Length']]
 
 # Data cleaning
@@ -128,10 +128,14 @@ plt.show()
 
 # Sentiment by Topic
 colors = ['red' if val < -0.05 else 'green' if val > 0.05 else 'gray' for val in sentiment_by_topic_named]
-sentiment_by_topic_named.plot(kind='bar', color=colors, title='Average Sentiment by Topic', figsize=(10, 6))
+ax = sentiment_by_topic_named.plot(kind='bar', color=colors, title='Average Sentiment by Topic', figsize=(10, 6))
 plt.xlabel('Topic')
 plt.ylabel('Average Sentiment')
 plt.xticks(rotation=45, ha='right')
+
+for i, val in enumerate(sentiment_by_topic_named):
+    ax.text(i, val / 2, f'{val:.2f}', ha='center', va='center', color='white' if abs(val) > 0.1 else 'black')
+
 plt.tight_layout()
 plt.show()
 
